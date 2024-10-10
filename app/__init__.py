@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, redirect
 from flask_migrate import Migrate
 
 from app.config import Config
@@ -13,10 +13,19 @@ migrate = Migrate(app, db)
 
 @app.route('/')
 def root_endpoint():
-    return 'Package Tracker'
+    packages = Package.query.all()
+    return render_template('package_status.html', packages=packages)
 
 
 @app.route('/new_package', methods=['GET', 'POST'])
 def form():
     form = ShippingForm()
+    if form.validate_on_submit():
+        data = form.data
+        new_package = Package(sender=data['sender_name'], recipient=data['recipient_name'], origin=data['origin'], destination=data['destination'], location=data['origin'])
+        db.session.add(new_package)
+        db.session.commit()
+
+        Package.advance_all_locations()
+        return redirect('/')
     return render_template('shipping_request.html', form=form)
